@@ -1,0 +1,73 @@
+﻿<UserControl x:Class="Smart.RegionView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:local="clr-namespace:Smart"
+             mc:Ignorable="d">
+
+    <UserControl.Resources>
+        <Style TargetType="Button">
+            <Setter Property="Height" Value="25"/>
+            <Setter Property="Margin" Value="2"/>
+        </Style>
+        <Style TargetType="TextBlock">
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="FontSize" Value="20"/>
+        </Style>
+        <Style TargetType="TextBox">
+            <Setter Property="Margin" Value="5"/>
+        </Style>
+        <Style TargetType="ComboBox">
+            <Setter Property="Margin" Value="5"/>
+        </Style>
+    </UserControl.Resources>
+    
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="auto"/>
+            <RowDefinition Height="50"/>
+            <RowDefinition Height="50"/>
+            <RowDefinition Height="50"/>
+            <RowDefinition Height="50"/>
+            <RowDefinition Height="50"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="auto"/>
+            <ColumnDefinition/>
+        </Grid.ColumnDefinitions>
+
+        <WrapPanel Orientation="Horizontal" Grid.Row="0" Grid.ColumnSpan="2">
+            <Button Name="bSave" Content="Сохранить"/>
+            <Button x:Name="bAdd" Content="Добавить подчинённый участок"
+                    Click="AddChildrenRegions_Click"/>
+        </WrapPanel>
+
+        <!--Название участка-->
+        <TextBlock Text="Название участка" Grid.Row="1" Grid.Column="0"/>
+        <TextBox Name="tbName" FontSize="20"
+                    Grid.Row="1" Grid.Column="1"/>
+        
+        <!--Тип участка-->
+        <TextBlock Text="Тип участка" Grid.Row="2" Grid.Column="0"/>
+        <ComboBox Name="cbType" FontSize="20"
+            Grid.Row="2" Grid.Column="1"/>
+
+        <!--Производительность участка-->
+        <TextBlock Text="Произ-ть участка" Grid.Row="3" Grid.Column="0"/>
+        <TextBox Name="tbPower" FontSize="20"
+                 Grid.Row="3" Grid.Column="1"/>
+
+        <!--Перерыв-->
+        <TextBlock Text="Перерыв (в часах)" Grid.Row="4" Grid.Column="0"/>
+        <TextBox Name="tbDownTime" FontSize="20"
+                 Grid.Row="4" Grid.Column="1"/>
+
+        <!--Подчинённые участки-->
+        <TextBlock Text="Подчинённые участки" Grid.Row="5" Grid.ColumnSpan="2"/>
+        <ListBox x:Name="ListOfChildrens" Grid.Row="5" Grid.ColumnSpan="2"/>
+    </Grid>
+</UserControl>
