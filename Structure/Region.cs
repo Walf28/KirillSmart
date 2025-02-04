@@ -9,6 +9,7 @@ namespace Smart
         private Technology type = Technology.NONE; // Тип участка
         private int? power; // Производительность участка
         private int? downtime; // Время перерыва
+        private int workload = 0; // Нагрузка
         private string childrens = ""; // Список подчиннных участков, куда направляется изготовленная продукция, в порядке приоритета
         #endregion
 
@@ -17,8 +18,18 @@ namespace Smart
         public Technology Type { get => type; set => type = value; }
         public int? Power { get => power; set => power = value; }
         public int? DownTime { get => downtime; set => downtime = value; }
+        public int Workload
+        {
+            get => workload;
+            set
+            {
+                if (value < 0)
+                    throw new Exception("Ошибка! Нагрузка не может быть меньше 0");
+                workload = value;
+            }
+        }
         public string Childrens { get => childrens; set => childrens = value; }
-        public List<Region> getListRegions
+        public List<Region> getListChildrenRegions
         {
             get
             {
@@ -36,7 +47,8 @@ namespace Smart
                                 res[3].ToString(),
                                 res[4].ToString(),
                                 res[5].ToString(),
-                                res[6].ToString()!));
+                                res[6].ToString(),
+                                res[7].ToString()!));
                         }
                         catch { }
                     }
@@ -46,24 +58,28 @@ namespace Smart
         #endregion
 
         #region Конструкторы
-        public Region(int? idParent, string name, Technology type, int? power, int? downtime, string childrens) : base(name) // Когда ещё только создаётся Участок
+        public Region(int? idParent, string name, Technology type, int? power, int? downtime, int? workload, string childrens) : base(name) // Когда ещё только создаётся Участок
         {
             this.name = name;
             this.idParent = idParent;
             this.type = type;
             this.power = power;
             this.downtime = downtime;
+            if (workload != null && workload > 0)
+                this.workload = (int)workload;
             this.childrens = childrens;
         }
-        public Region(int id, int? idParent, string name, Technology type, int? power, int? downtime, string childrens) : base(id, name) // Когда всё известно и надо загрузить
+        public Region(int id, int? idParent, string name, Technology type, int? power, int? downtime, int? workload, string childrens) : base(id, name) // Когда всё известно и надо загрузить
         {
             this.idParent = idParent;
             this.type = type;
             this.power = power;
             this.downtime = downtime;
+            if (workload != null && workload > 0)
+                this.workload = (int)workload;
             this.childrens = childrens;
         }
-        public Region(string id, string idParent, string name, string? type, string? power, string? downtime, string childrens) // Когда всё известно и надо загрузить
+        public Region(string id, string idParent, string name, string? type, string? power, string? downtime, string? workload, string childrens) // Когда всё известно и надо загрузить
         {
             this.id = int.Parse(id);
             this.idParent = int.Parse(idParent);
@@ -71,6 +87,8 @@ namespace Smart
             this.name = name;
             this.power = power == null ? null : int.Parse(power);
             this.downtime = downtime == null ? null : int.Parse(downtime);
+            if (int.TryParse(workload, out int resWorkload) && resWorkload > 0)
+                this.workload = resWorkload;
             this.childrens = childrens;
         }
         #endregion
@@ -82,7 +100,9 @@ namespace Smart
             // Если объект ещё не создан, то его надо добавить
             if (id == null)
             {
-                if (DB.Insert("Region", new string[] { idParent.ToString()!, name, ((int)type).ToString(), power.ToString()!, downtime.ToString()!, childrens }, out int? returnID))
+                if (DB.Insert("Region",
+                    new string[] { idParent.ToString()!, name, ((int)type).ToString(), power.ToString()!, downtime.ToString()!, workload.ToString()!, childrens },
+                    out int? returnID))
                 {
                     id = returnID;
                     return true;
@@ -93,8 +113,8 @@ namespace Smart
 
             // Если объект уже создан, то его надо просто обновить
             return DB.Replace("Region", "id", id.ToString()!,
-                new string[] { "name", "type", "idParent", "power", "downtime", "childrens" },
-                new string[] { name, ((int)type).ToString(), idParent.ToString()!, power.ToString()!, downtime.ToString()!, childrens });
+                new string[] { "name", "type", "idParent", "power", "downtime", "workload", "childrens" },
+                new string[] { name, ((int)type).ToString(), idParent.ToString()!, power.ToString()!, downtime.ToString()!, workload.ToString(), childrens });
         }
 
         // Удалить объект из БД

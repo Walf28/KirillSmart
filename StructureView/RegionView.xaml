@@ -33,6 +33,7 @@
             <RowDefinition Height="50"/>
             <RowDefinition Height="50"/>
             <RowDefinition Height="50"/>
+            <RowDefinition Height="50"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
@@ -62,12 +63,15 @@
                  Grid.Row="3" Grid.Column="1"/>
 
         <!--Перерыв-->
-        <TextBlock Text="Перерыв (в часах)" Grid.Row="4" Grid.Column="0"/>
+        <TextBlock Text="Время прохода участка" Grid.Row="4" Grid.Column="0"/>
         <TextBox Name="tbDownTime" FontSize="20"
                  Grid.Row="4" Grid.Column="1"/>
+        <!--Перерыв-->
+        <TextBlock Text="Нагруженность" Grid.Row="5" Grid.Column="0"/>
+        <TextBlock x:Name="tbWorkload" Text="0" Grid.Row="5" Grid.Column="1"/>
 
         <!--Подчинённые участки-->
-        <TextBlock Text="Подчинённые участки" Grid.Row="5" Grid.ColumnSpan="2"/>
-        <ListBox x:Name="ListOfChildrens" Grid.Row="5" Grid.ColumnSpan="2"/>
+        <TextBlock Text="Подчинённые участки" Grid.Row="6" Grid.ColumnSpan="2"/>
+        <ListBox x:Name="ListOfChildrens" Grid.Row="7" Grid.ColumnSpan="2"/>
     </Grid>
 </UserControl>

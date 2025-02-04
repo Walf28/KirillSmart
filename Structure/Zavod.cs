@@ -78,24 +78,14 @@
                         r[3].ToString()!, // technology
                         r[4].ToString(), // power
                         r[5].ToString(), // downtime
-                        r[6].ToString()! // childrens
+                        r[6].ToString(), // workload
+                        r[7].ToString()! // childrens
                         );
                     ListRegions.Add(newRoute);
                 }
 
             return ListRegions;
         }
-
-        // Добавить подчинённый участок
-        /*public bool AddRegion(Region region)
-        {
-            if (id == null || region.getId == null)
-                return false;
-            this.regions += this.regions == "" ? region.getId : $";{region}";
-            if (!DB.Replace("Zavod", "id", id.ToString()!, "regions", regions))
-                return false;
-            return true;
-        }*/
 
         // Маршруты для выбранного товара
         public List<Route> GetRoutes(int IdRequest, string Product)
@@ -143,7 +133,7 @@
             if (region.Type == (Technology)int.Parse(technology[0]))
             {
                 technology.RemoveAt(0);
-                foreach (Region r in region.getListRegions)
+                foreach (Region r in region.getListChildrenRegions)
                 {
                     List<string>? CheckRegion = FindRoute(r, technology, nowPath);
                     if (CheckRegion != null && CheckRegion.Count > 0)
