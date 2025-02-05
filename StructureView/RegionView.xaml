@@ -58,7 +58,7 @@
             Grid.Row="2" Grid.Column="1"/>
 
         <!--Производительность участка-->
-        <TextBlock Text="Произ-ть участка" Grid.Row="3" Grid.Column="0"/>
+        <TextBlock Text="Произ-ть участка (г/час)" Grid.Row="3" Grid.Column="0"/>
         <TextBox Name="tbPower" FontSize="20"
                  Grid.Row="3" Grid.Column="1"/>
 

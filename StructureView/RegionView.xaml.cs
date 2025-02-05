@@ -31,7 +31,7 @@ namespace Smart
             tbName.Text = region.Name.Trim();
             cbType.SelectedIndex = (int)(region.Type);
             tbPower.Text = region.Power.ToString();
-            tbDownTime.Text = region.DownTime.ToString();
+            tbDownTime.Text = region.TransitTime.ToString();
             tbWorkload.Text = region.Workload.ToString();
             if (region != null && region.Childrens != null && region.Childrens != "")
                 foreach(string id in region.Childrens!.Split(';'))
@@ -91,7 +91,7 @@ namespace Smart
                 region.Name = tbName.Text;
                 region.Type = technology;
                 region.Power = Power;
-                region.DownTime = DownTime;
+                region.TransitTime = DownTime;
                 region.Workload = Workload;
                 region.Childrens = idChildrens;
             }
