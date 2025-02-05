@@ -73,7 +73,7 @@
 
             <!--Технологическая обработка-->
             <Button Content="Технология обработки"
-                    Background="Transparent" BorderBrush="Transparent"
+                    Background="Gray" BorderBrush="Transparent"
                     Grid.Row="2" Grid.ColumnSpan="2" Margin="0" Click="SelectTechnology_Click"/>
             <TextBlock x:Name="tbTechnology" TextWrapping="Wrap" 
                        Grid.Row="3" Grid.ColumnSpan="2"

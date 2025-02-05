@@ -157,9 +157,9 @@
                 technology.RemoveAt(0);
                 foreach (Region r in region.getListChildrenRegions)
                 {
-                    List<Route> CheckRegion = FindRoute(r, technology, nowPath);
+                    List<Route> CheckRegion = FindRoute(r, technology.ToList(), nowPath);
                     if (CheckRegion.Count > 0)
-                        routes.Add(CheckRegion[^1]);
+                        routes.AddRange(CheckRegion);
                 }
             }
 

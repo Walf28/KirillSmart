@@ -113,9 +113,20 @@ namespace Smart.requsts
             try
             {
                 Zavod z = ((cbFactory.SelectedItem as ComboBoxItem)!.Tag as Zavod)!;
-                Route r = Route.SelectFastestRoute(z.GetRoutes(tbName.Text, int.Parse(tbSize.Text)));
+                List<Route> AllRoutes = z.GetRoutes(tbName.Text, int.Parse(tbSize.Text));
+                Route r = Route.SelectFastestRoute(AllRoutes);
                 double TimeLead = r.GetTimeLead;
                 tbDateOfCompletion.Text = double.IsInfinity(TimeLead) ? "Заказ никогда не будет выполнен" : DateTime.Now.AddMinutes(r.GetTimeLead).ToString();
+
+                // Эти настройки для отладки
+                tbTimeLeadRoute.Text = TimeLead.ToString();
+                tbRoute.Text = "";
+                foreach (var id in r.route.Split(';'))
+                {
+                    var res = DB.SelectWhere("Region", "id", id)![0];
+                    tbRoute.Text += $"{res[2]} -> ";
+                }
+                tbRoute.Text = tbRoute.Text.Remove(tbRoute.Text.Length - 4);
             }
             catch (Exception ex)
             {

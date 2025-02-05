@@ -73,7 +73,7 @@ namespace Smart
             // Получаем необходимые переменные, описывающие новые данные
             Technology technology = (Technology)cbType.SelectedIndex;
             int.TryParse(tbPower.Text, out int Power);
-            int.TryParse(tbDownTime.Text, out int DownTime);
+            int.TryParse(tbDownTime.Text, out int TransitTime);
             int.TryParse(tbWorkload.Text, out int Workload);
             string idChildrens = "";
             if (ListOfChildrens.Items.Count > 0)
@@ -85,13 +85,13 @@ namespace Smart
 
             // Решаем, обновлять или создавать новый регион
             if (region == null)
-                region = new Region(z.getId, tbName.Text, technology, Power, DownTime, Workload, idChildrens);
+                region = new Region(z.getId, tbName.Text, technology, Power, TransitTime, Workload, idChildrens);
             else
             {
                 region.Name = tbName.Text;
                 region.Type = technology;
                 region.Power = Power;
-                region.TransitTime = DownTime;
+                region.TransitTime = TransitTime;
                 region.Workload = Workload;
                 region.Childrens = idChildrens;
             }

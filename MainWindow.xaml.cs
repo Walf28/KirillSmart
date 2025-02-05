@@ -1,5 +1,4 @@
-﻿using Microsoft.VisualBasic;
-using Smart.Products;
+﻿using Smart.Products;
 using Smart.requsts;
 using System.Windows;
 using System.Windows.Controls;
@@ -178,6 +177,7 @@ namespace Smart
                         TreeViewItem tviRegion = new TreeViewItem() { Header = zs.Name, Tag = zs, IsSelected = true };
                         tviRegion.MouseDoubleClick += Select_DoubleClick;
                         selectedObject.Items.Add(tviRegion);
+                        selectedObject = tviRegion;
                     }
                     else // В остальных случаях считаем, что надо просто обновить ветку
                     {

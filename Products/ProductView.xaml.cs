@@ -1,6 +1,4 @@
-﻿using System.ComponentModel;
-using System.Reflection;
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 
 namespace Smart.Products

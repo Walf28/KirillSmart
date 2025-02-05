@@ -28,6 +28,8 @@
                 <RowDefinition Height="50"/>
                 <RowDefinition Height="50"/>
                 <RowDefinition Height="50"/>
+                <RowDefinition Height="50"/>
+                <RowDefinition Height="50"/>
             </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="auto"/>
@@ -67,6 +69,16 @@
             <!--Дата выполнения зявки-->
             <TextBlock Text="Дата и время выполнения заявки" Grid.Row="7" Grid.Column="0"/>
             <TextBlock x:Name="tbDateOfCompletion" Grid.Row="7" Grid.Column="1"/>
+
+            <!--Маршрут (только для отладки)-->
+            <TextBlock Text="Маршрут" Grid.Row="8" Grid.Column="0"/>
+            <TextBlock x:Name="tbRoute" Grid.Row="8" Grid.Column="1" TextWrapping="Wrap"/>
+
+            <!--Время прохождения маршрута (с учётом текущей нагруженности) (только для отладки)-->
+            <TextBlock Text="Время прохождения маршрута (с учётом текущей нагруженности)" 
+                       Grid.Row="9" Grid.Column="0"
+                       TextWrapping="Wrap"/>
+            <TextBlock x:Name="tbTimeLeadRoute" Grid.Row="9" Grid.Column="1" TextWrapping="Wrap"/>
         </Grid>
     </Grid>
 </Window>
