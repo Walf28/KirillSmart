@@ -1,7 +1,7 @@
 ﻿using System.Windows;
 using System.Windows.Controls;
 
-namespace Smart.Products
+namespace Smart
 {
     /// <summary>
     /// Логика взаимодействия для ProductView.xaml

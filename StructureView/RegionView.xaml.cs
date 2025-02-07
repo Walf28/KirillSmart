@@ -32,7 +32,7 @@ namespace Smart
             cbType.SelectedIndex = (int)(region.Type);
             tbPower.Text = region.Power.ToString();
             tbDownTime.Text = region.TransitTime.ToString();
-            tbWorkload.Text = region.Workload.ToString();
+            tbWorkload.Text = region.GetSummWorkload.ToString();
             if (region != null && region.Childrens != null && region.Childrens != "")
                 foreach(string id in region.Childrens!.Split(';'))
                 {
@@ -74,7 +74,6 @@ namespace Smart
             Technology technology = (Technology)cbType.SelectedIndex;
             int.TryParse(tbPower.Text, out int Power);
             int.TryParse(tbDownTime.Text, out int TransitTime);
-            int.TryParse(tbWorkload.Text, out int Workload);
             string idChildrens = "";
             if (ListOfChildrens.Items.Count > 0)
             {
@@ -85,14 +84,13 @@ namespace Smart
 
             // Решаем, обновлять или создавать новый регион
             if (region == null)
-                region = new Region(z.getId, tbName.Text, technology, Power, TransitTime, Workload, idChildrens);
+                region = new Region(z.getId, tbName.Text, technology, Power, TransitTime, idChildrens);
             else
             {
                 region.Name = tbName.Text;
                 region.Type = technology;
                 region.Power = Power;
                 region.TransitTime = TransitTime;
-                region.Workload = Workload;
                 region.Childrens = idChildrens;
             }
             return region;

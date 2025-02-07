@@ -1,6 +1,4 @@
-﻿using Smart.Products;
-using Smart.requsts;
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 

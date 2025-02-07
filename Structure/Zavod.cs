@@ -31,7 +31,7 @@
             // Если объект ещё не создан, то его надо добавить
             if (id == null)
             {
-                if (DB.Insert("Zavod", new string[] { name, AcceptedRequests, "" }, out int? returnID))
+                if (DB.Insert("Zavod", [name, AcceptedRequests, ""], out int? returnID))
                 {
                     id = returnID;
                     return true;
@@ -42,8 +42,8 @@
 
             // Если объект уже создан, то его надо просто обновить
             return DB.Replace("Zavod", "id", id.ToString()!,
-                new string[] { "name", "requests", "regions" },
-                new string[] { name, AcceptedRequests, "" });
+                ["name", "requests", "regions"],
+                [name, AcceptedRequests, ""]);
         }
 
         // Удалить объект из БД
@@ -55,7 +55,7 @@
 
             // Сначала надо удалить участки, если таковые имеются
             if (!DB.Delete("Region", "idParent", id.ToString()!))
-                throw new Exception($"Не удалось удалить участок номер {id.ToString()}");
+                throw new Exception($"Не удалось удалить участок номер {id}");
 
             // А теперь можно и сам завод удалить
             return DB.Delete("Zavod", "id", id.ToString()!);
@@ -67,12 +67,12 @@
             if (id == null)
                 throw new Exception("Произошла ошибка при загрузке участков! Удостоверьтесь, что завод существует!");
 
-            List<Region> ListRegions = new List<Region>();
+            List<Region> ListRegions = [];
             var res = DB.SelectWhere("Region", "idParent", id.ToString()!);
             if (res != null)
                 foreach (var r in res)
                 {
-                    Region newRoute = new Region(
+                    Region newRegion = new(
                         r[0].ToString()!, // id
                         r[1].ToString()!, // idParent
                         r[2].ToString()!, // name
@@ -82,7 +82,7 @@
                         r[6].ToString(), // workload
                         r[7].ToString()! // childrens
                         );
-                    ListRegions.Add(newRoute);
+                    ListRegions.Add(newRegion);
                 }
 
             return ListRegions;
@@ -92,13 +92,13 @@
         public bool ItCanMakeRequest(Request request)
         {
             // Исходные данные
-            List<Technology> TechnologyProcess = request.getNeedTechnologyProcessing;
+            List<Technology> TechnologyProcess = request.GetNeedTechnologyProcessing;
             List<Region> regions = LoadRegions();
 
             // Нужен хотя бы один путь
             foreach (var region in regions)
             {
-                List<Route> routes = FindRoute(region, TechnologyProcess.ToList());
+                List<Route> routes = FindRoute(region, [.. TechnologyProcess]);
                 if (routes.Count > 0) // Путь есть => заказ выполнить возможно
                     return true;
             }
@@ -111,17 +111,17 @@
         public List<Route> GetRoutes(string Product, int size = 0)
         {
             // Находим инструкцию, как делается такой товар, и подчинённые участки
-            List<string> StringTechnology = DB.SelectWhere("Products", "name", Product)![0][2].ToString()!.Split(';').ToList<string>();
+            List<string> StringTechnology = [.. DB.SelectWhere("Products", "name", Product)![0][2].ToString()!.Split(';')];
             List<Region> regions = LoadRegions();
-            List<Technology> ListTechnology = new List<Technology>();
+            List<Technology> ListTechnology = [];
             foreach (var st in StringTechnology)
                 ListTechnology.Add((Technology)int.Parse(st));
 
             // Находим маршрут(-ы)
-            List<Route> Routes = new List<Route>();
+            List<Route> Routes = [];
             foreach (Region reg in regions)
             {
-                List<Route>? result = FindRoute(reg, ListTechnology.ToList());
+                List<Route>? result = FindRoute(reg, [.. ListTechnology]);
                 if (result != null)
                     Routes.AddRange(result);
             }
@@ -134,9 +134,9 @@
             // Конец
             return Routes;
         }
-        private List<Route> FindRoute(Region region, List<Technology> technology, string nowPath = "") // Проверяем соответствие участка на технологию для построения маршрута
+        private static List<Route> FindRoute(Region region, List<Technology> technology, string nowPath = "") // Проверяем соответствие участка на технологию для построения маршрута
         {
-            List<Route> routes = new List<Route>();
+            List<Route> routes = [];
             // Сначала проверим, не является ли данная технология последней в списке
             nowPath += $"{region.getId};";
             if (technology.Count == 1)
@@ -155,9 +155,9 @@
             if (region.Type == technology[0])
             {
                 technology.RemoveAt(0);
-                foreach (Region r in region.getListChildrenRegions)
+                foreach (Region r in region.GetListChildrenRegions)
                 {
-                    List<Route> CheckRegion = FindRoute(r, technology.ToList(), nowPath);
+                    List<Route> CheckRegion = FindRoute(r, [.. technology], nowPath);
                     if (CheckRegion.Count > 0)
                         routes.AddRange(CheckRegion);
                 }
@@ -167,7 +167,7 @@
         }
 
         // Добавить заказ. Если не выбрать маршрут, то он будет выбран автоматически. Автоматическое сохранение
-        public void AddRequest(ref Request request, Route? route)
+        public void AddRequest(ref Request request, Route? route = null)
         {
             // Проверка на то, что данный завод существует
             if (id == null)
@@ -179,11 +179,16 @@
                 if (RequestPart == request.GetId.ToString())
                     throw new Exception("Заявка уже принята");
 
+            // Проверка, что данный завод может выполнить заявку
+            if (!ItCanMakeRequest(request))
+                throw new Exception("Данный завод не может выполнить заявку");
+
             // Добавление заказа
             if (AcceptedRequests != "")
                 AcceptedRequests += ';';
             AcceptedRequests += request.GetId;
-            if (!request.SetFactory(this, route == null ? Route.SelectFastestRoute(GetRoutes(request.GetProduct)) : route))
+            route ??= Route.SelectFastestRoute(GetRoutes(request.GetProduct))!;
+            if (!request.SetFactory(this, ref route))
                 throw new Exception("Не удалось передать заказ");
 
             // Сохранение

@@ -2,7 +2,7 @@
 using System.Windows.Controls;
 using System.Windows.Media;
 
-namespace Smart.requsts
+namespace Smart
 {
     /// <summary>
     /// Логика взаимодействия для RequestView.xaml
@@ -19,7 +19,7 @@ namespace Smart.requsts
             var res = DB.SelectAll("Requests");
             foreach (var r in res!)
             {
-                Request request = new Request(
+                Request request = new(
                     r[0].ToString()!, // id
                     r[1].ToString()!, // DateOfReceipt
                     r[2].ToString()!, // Product
@@ -27,9 +27,11 @@ namespace Smart.requsts
                     r[4].ToString(), // Factory
                     r[5].ToString(), // GetDateOfAcceptance
                     r[6].ToString(), // GetDateOfCompletion
-                    r[7].ToString() // IdRoute
+                    r[7].ToString(), // IdRoute
+                    r[8].ToString(), // GetDateOfCompletionOnRegion
+                    r[9].ToString() // IsFinish
                     );
-                TreeViewItem tvi = new TreeViewItem() { Header = $"{request.GetId}_{request.GetProduct}", Tag = request };
+                TreeViewItem tvi = new() { Header = $"{request.GetId}_{request.GetProduct}", Tag = request };
                 tvi.Selected += TreeViewItem_Selected;
                 tvTree.Items.Add(tvi);
             }
@@ -38,8 +40,8 @@ namespace Smart.requsts
             res = DB.SelectAll("Zavod");
             foreach (var r in res!)
             {
-                Zavod z = new Zavod(int.Parse(r[0].ToString()!), r[1].ToString()!, r[2].ToString()!, r[3].ToString()!);
-                ComboBoxItem cbi = new ComboBoxItem() { Content = r[1], Tag = z };
+                Zavod z = new(int.Parse(r[0].ToString()!), r[1].ToString()!, r[2].ToString()!, r[3].ToString()!);
+                ComboBoxItem cbi = new() { Content = r[1], Tag = z };
                 cbFactory.Items.Add(cbi);
             }
         }
@@ -76,7 +78,7 @@ namespace Smart.requsts
         }
 
         // Принять заявку
-        private void bAccept_Click(object sender, RoutedEventArgs e)
+        private void AcceptRequest_Click(object sender, RoutedEventArgs e)
         {
             try
             {
@@ -87,13 +89,13 @@ namespace Smart.requsts
                     throw new Exception("Неизвестная ошибка!");
 
                 // Принятие заявки
-                //(cbFactory.Tag as Zavod)!.AddRequest(ref SelectRequest);
+                (cbFactory.Tag as Zavod)!.AddRequest(ref SelectRequest);
 
                 // Нахождение маршрутов
                 /*List<Route> routes = (cbFactory.Tag as Zavod)!.GetRoutes(SelectRequest!.getId, SelectRequest.getProduct);
                 routes.ForEach(r =>
                 {
-                    tbDateOfCompletion.Text += $"{r.route}\n";
+                    tbDateOfCompletion.Text += $"{r.ItRoute}\n";
                 });*/
             }
             catch (Exception ex)
@@ -103,7 +105,7 @@ namespace Smart.requsts
         }
 
         // Выбор завода
-        private void cbFactory_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private void Factory_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if ((cbFactory.SelectedItem as ComboBoxItem)!.Background == Brushes.Red)
             {
@@ -114,14 +116,14 @@ namespace Smart.requsts
             {
                 Zavod z = ((cbFactory.SelectedItem as ComboBoxItem)!.Tag as Zavod)!;
                 List<Route> AllRoutes = z.GetRoutes(tbName.Text, int.Parse(tbSize.Text));
-                Route r = Route.SelectFastestRoute(AllRoutes);
+                Route r = Route.SelectFastestRoute(AllRoutes)!;
                 double TimeLead = r.GetTimeLead;
                 tbDateOfCompletion.Text = double.IsInfinity(TimeLead) ? "Заказ никогда не будет выполнен" : DateTime.Now.AddMinutes(r.GetTimeLead).ToString();
 
                 // Эти настройки для отладки
                 tbTimeLeadRoute.Text = TimeLead.ToString();
                 tbRoute.Text = "";
-                foreach (var id in r.route.Split(';'))
+                foreach (var id in r.ItRoute)
                 {
                     var res = DB.SelectWhere("Region", "id", id)![0];
                     tbRoute.Text += $"{res[2]} -> ";

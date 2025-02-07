@@ -1,9 +1,9 @@
-﻿<Window x:Class="Smart.requsts.RequestView"
+﻿<Window x:Class="Smart.RequestView"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:Smart.requsts"
+        xmlns:local="clr-namespace:Smart"
         mc:Ignorable="d"
         Title="Заявки" Height="450" Width="800">
     <Grid>
@@ -38,7 +38,7 @@
 
             <!--Кнопки управления-->
             <WrapPanel Orientation="Horizontal" Grid.ColumnSpan="2">
-                <Button Content="Принять" Click="bAccept_Click"/>
+                <Button Content="Принять" Click="AcceptRequest_Click"/>
             </WrapPanel>
 
             <!--Номер заявки-->
@@ -60,7 +60,7 @@
             <!--Завод-->
             <TextBlock Text="Завод" Grid.Row="5" Grid.Column="0"/>
             <ComboBox x:Name="cbFactory" Grid.Row="5" Grid.Column="1" 
-                      SelectionChanged="cbFactory_SelectionChanged"/>
+                      SelectionChanged="Factory_SelectionChanged"/>
             
             <!--Дата принятия заявки-->
             <TextBlock Text="Дата и время принятия заявки" Grid.Row="6" Grid.Column="0"/>
