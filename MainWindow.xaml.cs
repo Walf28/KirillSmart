@@ -16,6 +16,7 @@ namespace Smart
         public MainWindow()
         {
             InitializeComponent();
+            StreamsByRegions.LoadRegions();
 
             try
             {
@@ -124,6 +125,7 @@ namespace Smart
                 {
                     Zavod z = ((selectedObject!.Parent as TreeViewItem)!.Tag as Zavod)!;
                     Region r = (o as Region)!;
+                    r.Refresh();
                     regionView = new RegionView(ref z, ref r);
                     regionView.bSave.Click += ZavodStructureSave_Click;
                     ccSelect.Content = regionView;

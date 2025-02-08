@@ -80,7 +80,8 @@
                         r[4].ToString(), // MaxPower
                         r[5].ToString(), // transitTime
                         r[6].ToString(), // workload
-                        r[7].ToString()! // childrens
+                        r[7].ToString()!, // childrens
+                        r[8].ToString() // SizeToCompleteFirstRoute
                         );
                     ListRegions.Add(newRegion);
                 }
@@ -187,13 +188,16 @@
             if (AcceptedRequests != "")
                 AcceptedRequests += ';';
             AcceptedRequests += request.GetId;
-            route ??= Route.SelectFastestRoute(GetRoutes(request.GetProduct))!;
+            route ??= Route.SelectFastestRoute(GetRoutes(request.GetProduct, request.GetSize))!;
+            route.IdRequest = request.GetId;
             if (!request.SetFactory(this, ref route))
                 throw new Exception("Не удалось передать заказ");
 
             // Сохранение
             if (!Save())
                 throw new Exception("Сохранение на каком-то этапе не удалось");
+
+            route.ActivateRoute();
         }
         #endregion
     }

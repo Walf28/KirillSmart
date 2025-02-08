@@ -1,26 +1,22 @@
-﻿using System.Windows.Threading;
-
-namespace Smart
+﻿namespace Smart
 {
     public class Route
     {
         #region Поля
         private int? id; // Номер маршрута на всякий случай
         private int? idRequest; // Номер заказа, исполняемого по данному маршруту
-        private List<string> _route = []; // Маршрут (последовательные id через точку с запятой)
+        private List<int> _route = []; // Маршрут (последовательные id через точку с запятой)
         private int MaxPower = 0; // Мощность маршрута
         private int size = 0; // Сколько товара надо произвести
         private double timeLead = double.PositiveInfinity; // Суммарное время прохождения маршрута (в минутах)
         private List<double> timeLeadOnRegions = []; // Время прохождения по участкам (в минутах)
         private int regionQueue = 0; // номер региона по счёту, который должен обрабатываться на данный момент.
-
-        private Region? SelectedRegion; // Регион, которым сейчас управляет маршрут
         #endregion
 
         #region Свойства
         public int? GetId => id;
         public int? IdRequest { get => idRequest; set => idRequest = value; }
-        public List<string> ItRoute
+        public List<int> ItRoute
         {
             get => _route;
             set
@@ -45,32 +41,15 @@ namespace Smart
         }
         public double GetTimeLead => timeLead;
         public List<double> GetTimeLeadOnRegions => timeLeadOnRegions;
-        public Request GetRequest
-        {
-            get
-            {
-                var r = DB.SelectWhere("Requests", "id", idRequest.ToString()!)![0];
-                Request request = new(
-                    r[0].ToString()!,
-                    r[1].ToString()!,
-                    r[2].ToString()!,
-                    r[3].ToString()!,
-                    r[4].ToString(),
-                    r[5].ToString(),
-                    r[6].ToString(),
-                    r[7].ToString(),
-                    r[8].ToString(),
-                    r[9].ToString());
-                return request;
-            }
-        }
-        #endregion
-
-        #region Поля для "оживления" класса
-        private DispatcherTimer timer = new();
+        public Request GetRequest => new Request((int)idRequest!);
         #endregion
 
         #region Конструкторы
+        public Route(int id)
+        {
+            this.id = id;
+            Refresh();
+        }
         public Route(string Route)
         {
             this._route = RouteStringToList(Route);
@@ -102,7 +81,7 @@ namespace Smart
             if (id == null)
             {
                 if (DB.Insert("Routes",
-                    [idRequest.ToString()!, RouteListToString(), MaxPower.ToString(), size.ToString(), timeLead.ToString(), TimeLeadOnRegionsToString()],
+                    [idRequest.ToString()!, RouteListToString(), MaxPower.ToString(), size.ToString(), timeLead.ToString().Replace(',', '.'), TimeLeadOnRegionsToString(), regionQueue.ToString()],
                     out int? returnID))
                 {
                     id = returnID;
@@ -114,8 +93,8 @@ namespace Smart
 
             // Если объект уже создан, то его надо просто обновить
             return DB.Replace("Routes", "id", id.ToString()!,
-                ["idRequest", "MaxPower", "ItRoute", "size", "timeLead", "timeLeadOnRegions"],
-                [idRequest.ToString()!, MaxPower.ToString(), RouteListToString(), size.ToString(), timeLead.ToString(), TimeLeadOnRegionsToString()]);
+                ["idRequest", "MaxPower", "route", "size", "timeLead", "timeLeadOnRegions", "regionQueue"],
+                [idRequest.ToString()!, MaxPower.ToString(), RouteListToString(), size.ToString(), timeLead.ToString().Replace(',', '.'), TimeLeadOnRegionsToString(), regionQueue.ToString()]);
         }
 
         // Удалить объект из БД
@@ -132,31 +111,31 @@ namespace Smart
         // Нахождение мощности маршрута
         private int UpdatePower()
         {
-            int power = 0;
+            int power = int.MaxValue;
             if (ItRoute.Count > 0)
-                foreach (string IdRegion in _route)
+                foreach (int IdRegion in _route)
                 {
-                    var result = DB.SelectWhere("Region", "id", IdRegion)![0];
-                    if (int.TryParse(result[4].ToString(), out int ResPower))
-                        power += ResPower;
+                    var result = new Region(IdRegion);
+                    if (result.Power < power)
+                        power = (int)result.Power;
                 }
             return power;
         }
 
         // Сколько времени понадобится данному маршруту, чтоб выполнить заказ (в минутах).
-        // При подсчёте времени считается, что маршрут ещё не запущен.
+        // При подсчёте времени считается, что данный маршрут ещё не привязан к участку.
         private double CalculateTheTime()
         {
             double time = 0;
             timeLeadOnRegions = [];
 
-            foreach (string IdRegion in _route)
+            foreach (int IdRegion in _route)
             {
-                var region = SelectRegionById(IdRegion);
+                var region = new Region(IdRegion);
                 int power = (int)region.Power!; // Мощность линии (граммы/час)
                 if (power == 0)
                     return double.PositiveInfinity;
-                double timeForWorkload = region.GetSummWorkload / (power / 60.0); // Время, затрачиваемое на имеющиеся заказы
+                double timeForWorkload = (region.GetSummWorkload - (region.IsRouteExist((int)id!) ? size : 0)) / (power / 60.0); // Время, затрачиваемое на имеющиеся заказы
                 double timeForItRegion = size / (power / 60.0); // Время, затрачиваемое на данный регион
                 double timeForTransit = (int)region.TransitTime!; // Время прохождения линии (не учитывает время обработки)
                 timeLeadOnRegions.Add(timeForWorkload + timeForItRegion + timeForTransit);
@@ -170,18 +149,19 @@ namespace Smart
         private string TimeLeadOnRegionsToString()
         {
             string strTimeLeadOnRegions = "";
-            foreach (var TLoR in timeLeadOnRegions)
-                strTimeLeadOnRegions += $"{TLoR};";
+            if (timeLeadOnRegions.Count > 0)
+                foreach (var TLoR in timeLeadOnRegions)
+                    strTimeLeadOnRegions += $"{TLoR};";
             return strTimeLeadOnRegions == "" ? strTimeLeadOnRegions : strTimeLeadOnRegions.Remove(strTimeLeadOnRegions.Length - 1);
         }
 
         // Конвертация строки маршрута в список
-        private List<string> RouteStringToList(string route)
+        private List<int> RouteStringToList(string route)
         {
-            List<string> list = [];
+            List<int> list = [];
             if (route != "")
-                foreach(var r in route.Split(';'))
-                    list.Add(r);
+                foreach (var r in route.Split(';'))
+                    list.Add(int.Parse(r));
             return list;
         }
 
@@ -201,39 +181,37 @@ namespace Smart
         // Активация/обновление/деактивация маршрута
         public void ActivateRoute()
         {
-            if (regionQueue >= timeLeadOnRegions.Count || timeLead == double.PositiveInfinity)
-                throw new Exception("Ошибка! Убедитесь, что маршрут ещё не завершён или что он способен выполнить заявку");
-            timer.Interval = TimeSpan.FromMinutes(timeLeadOnRegions[regionQueue]);
-            timer.Tick += UpdateRoute;
-            timer.Start();
-        }
-        private void UpdateRoute(object? sender, EventArgs e)
-        {
-            // Тут как-бы надо активировать участок
-            timeLead = CalculateTheTime();
-            SelectedRegion = SelectRegionById(_route[regionQueue]);
-            SelectedRegion.AddWorkload(this);
-
-            // Обновить маршрут или закончить его
-            if (regionQueue < timeLeadOnRegions.Count)
+            if (id == null || regionQueue >= timeLeadOnRegions.Count || timeLead == double.PositiveInfinity)
+                throw new Exception("Ошибка! Убедитесь, что маршрут существует, ещё не завершён или что он способен выполнить заявку");
+            for (int i = regionQueue; i < _route.Count; ++i)
             {
-                timer.Interval = TimeSpan.FromMinutes(timeLeadOnRegions[regionQueue]);
-                ++regionQueue;
+                Region r = new(_route[i]);
+                r.AddWorkload(this);
             }
-            else
-                DeactivateRoute();
-
-            // Сохраняем данные
-            Save();
+            if (!Save())
+                throw new Exception("Не удалось обновить данные в БД");
+        }
+        public void NextRegion()
+        {
+            try
+            {
+                GetRequest.UpdateDateOfCompletionOnRegion(regionQueue, DateTime.Now);
+                ++regionQueue;
+                if (regionQueue >= _route.Count)
+                    DeactivateRoute();
+                else
+                    ActivateRoute();
+            }
+            catch (Exception e)
+            {
+                --regionQueue;
+                throw new Exception(e.Message);
+            }
         }
         public void DeactivateRoute()
         {
-            if (regionQueue >= _route.Count)
-            {
-
-            }
-            SelectedRegion = null;
-            timer.Stop();
+            if (!Save())
+                throw new Exception("Не удалось сохранить маршрут после его завершения");
         }
 
         // Обновить объект
@@ -252,21 +230,12 @@ namespace Smart
             this.regionQueue = int.Parse(datas[7].ToString()!);
         }
 
-        // Выбрать регион по его Id
-        private Region SelectRegionById(string regionId)
+        // Посмотреть готовность данного маршрута продолжить обработку
+        public bool RegionIsReady(int regionId)
         {
-            var r = DB.SelectWhere("Region", "id", regionId)![0];
-            Region newRegion = new(
-                        r[0].ToString()!, // id
-                        r[1].ToString()!, // idParent
-                        r[2].ToString()!, // name
-                        r[3].ToString()!, // StringTechnology
-                        r[4].ToString(), // MaxPower
-                        r[5].ToString(), // transitTime
-                        r[6].ToString(), // workload
-                        r[7].ToString()! // childrens
-                        );
-            return newRegion;
+            if (_route[regionQueue] == regionId)
+                return true;
+            return false;
         }
 
         // Выбрать лучший маршрут

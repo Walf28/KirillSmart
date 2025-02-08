@@ -62,12 +62,16 @@ namespace Smart
 
             // Поиск выбранного завода
             if (SelectRequest.GetFactory != null)
+            {
                 foreach (ComboBoxItem cbi in cbFactory.Items)
-                    if ((int)cbi.Tag == SelectRequest.GetFactory)
+                    if ((cbi.Tag as Zavod)!.getId == SelectRequest.GetFactory)
                     {
                         cbFactory.SelectedItem = cbi;
                         break;
                     }
+            }
+            else
+                cbFactory.SelectedItem = null;
 
             // Выделение заводов, которые могут справиться с заказом
             foreach (ComboBoxItem cbi in cbFactory.Items)
@@ -89,14 +93,7 @@ namespace Smart
                     throw new Exception("Неизвестная ошибка!");
 
                 // Принятие заявки
-                (cbFactory.Tag as Zavod)!.AddRequest(ref SelectRequest);
-
-                // Нахождение маршрутов
-                /*List<Route> routes = (cbFactory.Tag as Zavod)!.GetRoutes(SelectRequest!.getId, SelectRequest.getProduct);
-                routes.ForEach(r =>
-                {
-                    tbDateOfCompletion.Text += $"{r.ItRoute}\n";
-                });*/
+                ((cbFactory.SelectedItem as ComboBoxItem)!.Tag as Zavod)!.AddRequest(ref SelectRequest);
             }
             catch (Exception ex)
             {
@@ -107,7 +104,9 @@ namespace Smart
         // Выбор завода
         private void Factory_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if ((cbFactory.SelectedItem as ComboBoxItem)!.Background == Brushes.Red)
+            if (cbFactory.SelectedItem == null)
+                return;
+            else if ((cbFactory.SelectedItem as ComboBoxItem)!.Background == Brushes.Red)
             {
                 tbDateOfCompletion.Text = "Данный завод не сможет выполнить заказ";
                 return;

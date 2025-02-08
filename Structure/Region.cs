@@ -9,11 +9,12 @@ namespace Smart
         private Technology type = Technology.NONE; // Тип участка
         private int? power = 0; // Производительность участка (г/час)
         private int? transitTime; // Время перерыва
-        private List<double> workload = []; // Нагрузка
+        private List<int> workload = []; // Нагрузка (последовательный список маршрутов из их id)
         private string childrens = ""; // Список подчиннных участков, куда направляется изготовленная продукция, в порядке приоритета
+        private double? SizeToCompleteFirstRoute; // Сколько необходимо произвести товара для завершения первого заказа
         #endregion
 
-        #region Поля не для просмотра
+        #region Переменные для работы участка
         private DispatcherTimer timer = new();
         private double powerInMinute = 0;
         #endregion
@@ -38,7 +39,7 @@ namespace Smart
             }
         }
         public int? TransitTime { get => transitTime; set => transitTime = value; }
-        public List<double> GetWorkload => workload;
+        public List<int> GetWorkload => workload;
         public double GetSummWorkload
         {
             get
@@ -47,7 +48,7 @@ namespace Smart
                     return 0;
                 double sum = 0;
                 foreach (var w in workload)
-                    sum += w;
+                    sum += new Route(w).Size;
                 return sum;
             }
         }
@@ -60,27 +61,24 @@ namespace Smart
                 if (childrens != "")
                     foreach (string item in childrens.Split(';'))
                     {
-                        var res = DB.SelectWhere("Region", "id", item)![0];
                         try // На случай, если такого региона больше не существует в БД
                         {
-                            regions.Add(new Region(
-                                res![0].ToString()!,
-                                res[1].ToString()!,
-                                res[2].ToString()!,
-                                res[3].ToString(),
-                                res[4].ToString(),
-                                res[5].ToString(),
-                                res[6].ToString(),
-                                res[7].ToString()!));
+                            regions.Add(new Region(int.Parse(item)));
                         }
                         catch { }
                     }
                 return regions;
             }
         }
+        public double? GetSizeToCompleteFirstRoute => SizeToCompleteFirstRoute;
         #endregion
 
         #region Конструкторы
+        public Region(int id)
+        {
+            this.id = id;
+            Refresh();
+        }
         public Region(int? idParent, string name, Technology type, int? power, int? transitTime, string childrens) : base(name) // Когда ещё только создаётся Участок
         {
             this.name = name;
@@ -88,10 +86,9 @@ namespace Smart
             this.type = type;
             this.Power = power;
             this.transitTime = transitTime;
-            this.workload = workload ?? [];
             this.childrens = childrens;
         }
-        public Region(int id, int? idParent, string name, Technology type, int? power, int? transitTime, List<double>? workload, string childrens) : base(id, name) // Когда всё известно и надо загрузить
+        public Region(int id, int? idParent, string name, Technology type, int? power, int? transitTime, List<int>? workload, string childrens, double? SizeToCompleteFirstRoute) : base(id, name) // Когда всё известно и надо загрузить
         {
             this.idParent = idParent;
             this.type = type;
@@ -99,8 +96,9 @@ namespace Smart
             this.transitTime = transitTime;
             this.workload = workload ?? [];
             this.childrens = childrens;
+            this.SizeToCompleteFirstRoute = SizeToCompleteFirstRoute;
         }
-        public Region(string id, string idParent, string name, string? type, string? power, string? transitTime, string? workload, string childrens) // Когда всё известно и надо загрузить
+        public Region(string id, string idParent, string name, string? type, string? power, string? transitTime, string? workload, string childrens, string? SizeToCompleteFirstRoute) // Когда всё известно и надо загрузить
         {
             this.id = int.Parse(id);
             this.idParent = int.Parse(idParent);
@@ -110,8 +108,10 @@ namespace Smart
             this.transitTime = transitTime == null ? null : int.Parse(transitTime);
             if (workload != null && workload != "")
                 foreach (var w in workload.Split(';'))
-                    this.workload.Add(double.Parse(w));
+                    this.workload.Add(int.Parse(w));
             this.childrens = childrens;
+            if (double.TryParse(SizeToCompleteFirstRoute, out double _SizeToCompleteFirstRoute))
+                this.SizeToCompleteFirstRoute = _SizeToCompleteFirstRoute;
         }
         #endregion
 
@@ -123,7 +123,7 @@ namespace Smart
             if (id == null)
             {
                 if (DB.Insert("Region",
-                    [idParent.ToString()!, name, ((int)type).ToString(), power.ToString()!, transitTime.ToString()!, workload.ToString()!, childrens],
+                    [idParent.ToString()!, name, ((int)type).ToString(), power.ToString()!, transitTime.ToString()!, workload.ToString()!, childrens, SizeToCompleteFirstRoute.ToString()!],
                     out int? returnID))
                 {
                     id = returnID;
@@ -135,8 +135,8 @@ namespace Smart
 
             // Если объект уже создан, то его надо просто обновить
             return DB.Replace("Region", "id", id.ToString()!,
-                ["name", "type", "idParent", "power", "transitTime", "workload", "childrens"],
-                [name, ((int)type).ToString(), idParent.ToString()!, power.ToString()!, transitTime.ToString()!, WorkloadToString(), childrens]);
+                ["name", "type", "idParent", "power", "transitTime", "workload", "childrens", "SizeToCompleteFirstRoute"],
+                [name, ((int)type).ToString(), idParent.ToString()!, power.ToString()!, transitTime.ToString()!, WorkloadToString(), childrens, SizeToCompleteFirstRoute.ToString()!]);
         }
 
         // Удалить объект из БД
@@ -163,6 +163,8 @@ namespace Smart
             this.transitTime = int.Parse(datas[5].ToString()!);
             this.workload = StringToWorkload(datas[6].ToString()!);
             this.childrens = datas[7].ToString()!;
+            if (double.TryParse(datas[8].ToString()!, out double SizeToCompleteFirstRoute))
+                this.SizeToCompleteFirstRoute = SizeToCompleteFirstRoute;
         }
 
         // Конвертацию нагрузки в строку и наоборот
@@ -173,28 +175,48 @@ namespace Smart
                 str += $"{item};";
             return str == "" ? str : str.Remove(str.Length - 1);
         }
-        private static List<double> StringToWorkload(string str = "")
+        private static List<int> StringToWorkload(string str = "")
         {
-            List<double> list = new List<double>();
-            foreach (var item in str.Split(';'))
-                list.Add(double.Parse(item));
+            List<int> list = [];
+            if (str != "")
+                foreach (var item in str.Split(';'))
+                    list.Add(int.Parse(item));
             return list;
         }
 
         // Добавить очередь
-        public void AddWorkload(Route route)
+        public void AddWorkload(Route route, bool start = false)
         {
-            workload.Add(route.Size);
-            if (!timer.IsEnabled)
-                ActivateRegion();
+            // Проверка на то, что маршрут можно запустить и на то, что маршрута ещё нет здесь
+            if (route.GetId == null)
+                throw new Exception("Номер маршрута неизвестен");
+
+            // Если маршрута ещё нет в списке, то его надо добавить.
+            if (!IsRouteExist((int)route.GetId))
+                workload.Add((int)route.GetId);
+
+            // Если значение ещё не задано, то, по идее, и нагрузки нет никакой всё ещё.
+            if (route.GetId == workload[0] && (SizeToCompleteFirstRoute != null || SizeToCompleteFirstRoute == 0))
+                SizeToCompleteFirstRoute = route.Size;
+
+            // Ну и обязательно сохраняем изменения.
+            if (!Save())
+                throw new Exception("Не удалось нагрузить участок");
+
+            // Если надо запустить участок сразу, то запускаем.
+            if (start && !timer.IsEnabled)
+                StreamsByRegions.AddRegion(this);
         }
 
         // Активировать/обновить/выключить участок
         public void ActivateRegion()
         {
-            timer.Tick += UpdateWorkload;
-            timer.Interval = TimeSpan.FromSeconds(60);
-            timer.Start();
+            if (!timer.IsEnabled && SizeToCompleteFirstRoute > 0)
+            {
+                timer.Tick += UpdateWorkload;
+                timer.Interval = TimeSpan.FromSeconds(60);
+                timer.Start();
+            }
         }
         private void UpdateWorkload(object? sender, EventArgs e)
         {
@@ -206,18 +228,34 @@ namespace Smart
             }
 
             // Обрабатываем изменения
+            Route? NowRoute = new Route(workload[0]);
             double copyPowerInMinute = powerInMinute;
-            while (copyPowerInMinute > 0 && workload.Count > 0)
+            while (copyPowerInMinute > 0 && SizeToCompleteFirstRoute > 0)
             {
-                double copyWorkload = workload[0];
-                workload[0] -= copyPowerInMinute;
-                if (workload[0] <= 0)
-                    workload.Remove(0);
-                copyPowerInMinute -= copyWorkload;
+                SizeToCompleteFirstRoute -= copyPowerInMinute;
+                copyPowerInMinute -= NowRoute.Size;
+                if (SizeToCompleteFirstRoute <= 0)
+                {
+                    workload.RemoveAt(0);
+                    
+                    if (workload.Count > 0)
+                    {
+                        NowRoute = new Route(workload[0]);
+                        SizeToCompleteFirstRoute = NowRoute.Size;
+                    }
+                    else
+                        break;
+                }
             }
 
             // Очередная проверка
             if (workload.Count == 0)
+            {
+                NowRoute = null;
+                SizeToCompleteFirstRoute = null;
+                DeactivateRegion();
+            }
+            else if (!NowRoute.RegionIsReady((int)id!))
                 DeactivateRegion();
 
             // Сохраняем изменения
@@ -226,6 +264,16 @@ namespace Smart
         public void DeactivateRegion()
         {
             timer.Stop();
+            timer.IsEnabled = false; // На всякий случай ещё и так
+        }
+
+        // Проверка, есть ли в очереди данный маршрут
+        public bool IsRouteExist(int IdRoute)
+        {
+            foreach (var ItRoute in workload)
+                if (ItRoute == IdRoute)
+                    return true;
+            return false;
         }
         #endregion
     }
