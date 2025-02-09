@@ -1,4 +1,6 @@
-﻿namespace Smart
+﻿using System.Windows.Threading;
+
+namespace Smart
 {
     public static class StreamsByRegions
     {
@@ -32,6 +34,8 @@
             routes.Add(route);
         }*/
 
+        //static DispatcherTimer timer = new() { Interval = TimeSpan.FromSeconds(10) };
+
         public static void LoadRegions()
         {
             var result = DB.SelectAll("Region")!;
@@ -50,7 +54,17 @@
                 region.ActivateRegion();
                 regions.Add(region);
             }
+
+            /*timer.Tick += Timer_Tick;
+            timer.Start();*/
         }
+
+        /*private static void Timer_Tick(object? sender, EventArgs e)
+        {
+            foreach (var region in regions)
+                if (region.GetSummWorkload > 0 && !region.IsOn)
+                    region.ActivateRegion();
+        }*/
 
         // Добавить участок. А если он уже добавлен, то активировать
         public static void AddRegion(Region region)
@@ -63,6 +77,17 @@
                 }
             region.ActivateRegion();
             regions.Add(region);
+        }
+
+        // Для ускорения
+        public static void ActivateOnId(int id)
+        {
+            foreach (var region in regions)
+                if (region.getId == id)
+                {
+                    region.ActivateRegion();
+                    return;
+                }
         }
     }
 }

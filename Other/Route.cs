@@ -131,11 +131,12 @@
 
             foreach (int IdRegion in _route)
             {
-                var region = new Region(IdRegion);
+                Region region = new(IdRegion);
                 int power = (int)region.Power!; // Мощность линии (граммы/час)
                 if (power == 0)
                     return double.PositiveInfinity;
-                double timeForWorkload = (region.GetSummWorkload - (region.IsRouteExist((int)id!) ? size : 0)) / (power / 60.0); // Время, затрачиваемое на имеющиеся заказы
+                double timeForWorkload = region.GetSummWorkload - (id == null ? 0 : region.IsRouteExist((int)id!) ? size : 0);
+                timeForWorkload /= (power / 60.0); // Время, затрачиваемое на имеющиеся заказы
                 double timeForItRegion = size / (power / 60.0); // Время, затрачиваемое на данный регион
                 double timeForTransit = (int)region.TransitTime!; // Время прохождения линии (не учитывает время обработки)
                 timeLeadOnRegions.Add(timeForWorkload + timeForItRegion + timeForTransit);
@@ -182,25 +183,30 @@
         public void ActivateRoute()
         {
             if (id == null || regionQueue >= timeLeadOnRegions.Count || timeLead == double.PositiveInfinity)
-                throw new Exception("Ошибка! Убедитесь, что маршрут существует, ещё не завершён или что он способен выполнить заявку");
+                throw new Exception("Ошибка! Убедитесь, что маршрут существует, ещё не завершён и что он способен выполнить заявку");
+            if (!Save())
+                throw new Exception("Не удалось обновить данные в БД");
             for (int i = regionQueue; i < _route.Count; ++i)
             {
                 Region r = new(_route[i]);
                 r.AddWorkload(this);
             }
-            if (!Save())
-                throw new Exception("Не удалось обновить данные в БД");
+            StreamsByRegions.ActivateOnId(_route[regionQueue]);
         }
         public void NextRegion()
         {
             try
             {
-                GetRequest.UpdateDateOfCompletionOnRegion(regionQueue, DateTime.Now);
                 ++regionQueue;
+                if (!Save())
+                    throw new Exception("Не удалось обновить БД при смене участка");
                 if (regionQueue >= _route.Count)
                     DeactivateRoute();
                 else
-                    ActivateRoute();
+                {
+                    GetRequest.UpdateDateOfCompletionOnRegion(regionQueue, DateTime.Now);
+                    StreamsByRegions.ActivateOnId(_route[regionQueue]);
+                }
             }
             catch (Exception e)
             {
@@ -210,6 +216,10 @@
         }
         public void DeactivateRoute()
         {
+            /*А что тут делать?
+             Пока до конца не ясно.*/
+            if (!GetRequest.SetFinish())
+                throw new Exception("Не удалось обозначить заявку завершённой");
             if (!Save())
                 throw new Exception("Не удалось сохранить маршрут после его завершения");
         }
@@ -223,8 +233,8 @@
             this.idRequest = int.Parse(datas[1].ToString()!);
             this._route = RouteStringToList(datas[2].ToString()!)!;
             this.MaxPower = int.Parse(datas[3].ToString()!);
-            this.Size = int.Parse(datas[4].ToString()!);
-            this.timeLead = int.Parse(datas[5].ToString()!);
+            this.size = int.Parse(datas[4].ToString()!);
+            this.timeLead = double.Parse(datas[5].ToString()!);
             foreach (var TLoR in datas[6].ToString()!.Split(';'))
                 this.timeLeadOnRegions.Add(double.Parse(TLoR));
             this.regionQueue = int.Parse(datas[7].ToString()!);
@@ -233,10 +243,17 @@
         // Посмотреть готовность данного маршрута продолжить обработку
         public bool RegionIsReady(int regionId)
         {
-            if (_route[regionQueue] == regionId)
-                return true;
+            if (regionQueue < _route.Count)
+                if (_route[regionQueue] == regionId)
+                    return true;
             return false;
         }
+
+        /*// Обновить время прохождения маршрута ---------------
+        public void UpdateTimeLead()
+        {
+
+        }*/
 
         // Выбрать лучший маршрут
         public static Route? SelectFastestRoute(List<Route> routes)

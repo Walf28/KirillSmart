@@ -96,7 +96,7 @@
         {
             return DB.Replace("Requests", "id", id.ToString(),
                 ["Factory", "DateOfAcceptance", "DateOfCompletion", "IdRoute", "DateOfCompletionOnRegion", "IsFinish"],
-                [_Factory.ToString()!, _DateOfAcceptance.ToString()!, _DateOfCompletion.ToString()!, IdRoute!.ToString()!, DoCoRToString(), isFinish ? "!" : "0"]);
+                [_Factory.ToString()!, _DateOfAcceptance.ToString()!, _DateOfCompletion.ToString()!, IdRoute!.ToString()!, DoCoRToString(), isFinish ? "1" : "0"]);
         }
 
         // Завершить заказ

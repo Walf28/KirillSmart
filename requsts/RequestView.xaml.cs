@@ -73,11 +73,17 @@ namespace Smart
             else
                 cbFactory.SelectedItem = null;
 
-            // Выделение заводов, которые могут справиться с заказом
-            foreach (ComboBoxItem cbi in cbFactory.Items)
+            // Выделение заводов, которые могут справиться с заказом (или пропуск)
+            if (SelectRequest!.isFinish)
+                cbFactory.IsEnabled = false;
+            else
             {
-                Zavod z = (cbi.Tag as Zavod)!;
-                cbi.Background = z.ItCanMakeRequest(SelectRequest) ? Brushes.Lime : Brushes.Red;
+                cbFactory.IsEnabled = true;
+                foreach (ComboBoxItem cbi in cbFactory.Items)
+                {
+                    Zavod z = (cbi.Tag as Zavod)!;
+                    cbi.Background = z.ItCanMakeRequest(SelectRequest) ? Brushes.Lime : Brushes.Red;
+                }
             }
         }
 
@@ -104,7 +110,7 @@ namespace Smart
         // Выбор завода
         private void Factory_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (cbFactory.SelectedItem == null)
+            if (cbFactory.SelectedItem == null || SelectRequest!.isFinish)
                 return;
             else if ((cbFactory.SelectedItem as ComboBoxItem)!.Background == Brushes.Red)
             {
@@ -124,7 +130,7 @@ namespace Smart
                 tbRoute.Text = "";
                 foreach (var id in r.ItRoute)
                 {
-                    var res = DB.SelectWhere("Region", "id", id)![0];
+                    var res = DB.SelectWhere("Region", "id", id.ToString())![0];
                     tbRoute.Text += $"{res[2]} -> ";
                 }
                 tbRoute.Text = tbRoute.Text.Remove(tbRoute.Text.Length - 4);

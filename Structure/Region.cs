@@ -17,6 +17,8 @@ namespace Smart
         #region Переменные для работы участка
         private DispatcherTimer timer = new();
         private double powerInMinute = 0;
+        Route? NowRoute;
+        public bool IsOn => timer.IsEnabled;
         #endregion
 
         #region Свойства
@@ -188,6 +190,7 @@ namespace Smart
         public void AddWorkload(Route route, bool start = false)
         {
             // Проверка на то, что маршрут можно запустить и на то, что маршрута ещё нет здесь
+            Refresh();
             if (route.GetId == null)
                 throw new Exception("Номер маршрута неизвестен");
 
@@ -196,8 +199,14 @@ namespace Smart
                 workload.Add((int)route.GetId);
 
             // Если значение ещё не задано, то, по идее, и нагрузки нет никакой всё ещё.
-            if (route.GetId == workload[0] && (SizeToCompleteFirstRoute != null || SizeToCompleteFirstRoute == 0))
-                SizeToCompleteFirstRoute = route.Size;
+            if (SizeToCompleteFirstRoute == null || SizeToCompleteFirstRoute == 0)
+            {
+                // Для ускорения надо сделать проверку
+                if (route.GetId == workload[0])
+                    SizeToCompleteFirstRoute = route.Size;
+                else
+                    SizeToCompleteFirstRoute = new Route(workload[0]).Size;
+            }
 
             // Ну и обязательно сохраняем изменения.
             if (!Save())
@@ -211,7 +220,20 @@ namespace Smart
         // Активировать/обновить/выключить участок
         public void ActivateRegion()
         {
-            if (!timer.IsEnabled && SizeToCompleteFirstRoute > 0)
+            // Проверка на то, что регион можно запустить
+            Refresh();
+            if (workload.Count > 0)
+            {
+                if (NowRoute == null)
+                    NowRoute = new(workload[0]);
+                if (SizeToCompleteFirstRoute == null || SizeToCompleteFirstRoute == 0)
+                    SizeToCompleteFirstRoute = NowRoute.Size;
+            }
+            else
+                return;
+
+            // Проверка на то, что регион ещё не запущен
+            if (!timer.IsEnabled && SizeToCompleteFirstRoute > 0 && NowRoute.RegionIsReady((int)id!))
             {
                 timer.Tick += UpdateWorkload;
                 timer.Interval = TimeSpan.FromSeconds(60);
@@ -221,14 +243,15 @@ namespace Smart
         private void UpdateWorkload(object? sender, EventArgs e)
         {
             // Проверка: если нет нагрузки, то нечего работать участку
-            if (workload.Count == 0)
+            Refresh();
+            if (workload.Count == 0 || NowRoute == null)
             {
                 DeactivateRegion();
                 return;
             }
 
             // Обрабатываем изменения
-            Route? NowRoute = new Route(workload[0]);
+            //NowRoute = new Route(workload[0]);
             double copyPowerInMinute = powerInMinute;
             while (copyPowerInMinute > 0 && SizeToCompleteFirstRoute > 0)
             {
@@ -237,6 +260,7 @@ namespace Smart
                 if (SizeToCompleteFirstRoute <= 0)
                 {
                     workload.RemoveAt(0);
+                    NowRoute.NextRegion();
                     
                     if (workload.Count > 0)
                     {
@@ -270,9 +294,10 @@ namespace Smart
         // Проверка, есть ли в очереди данный маршрут
         public bool IsRouteExist(int IdRoute)
         {
-            foreach (var ItRoute in workload)
-                if (ItRoute == IdRoute)
-                    return true;
+            if (workload.Count > 0)
+                foreach (var ItRoute in workload)
+                    if (ItRoute == IdRoute)
+                        return true;
             return false;
         }
         #endregion

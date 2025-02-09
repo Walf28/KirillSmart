@@ -128,7 +128,7 @@
             }
 
             // Добавляем размер, если нужно
-            if (size > 0)
+            if (size > 0 && Routes.Count > 0)
                 foreach (Route route in Routes)
                     route.Size = size;
 
