@@ -128,6 +128,7 @@
         {
             double time = 0;
             timeLeadOnRegions = [];
+            DateTime? downtimeOnRoute = null;
 
             foreach (int IdRegion in _route)
             {
@@ -135,11 +136,27 @@
                 int power = (int)region.Power!; // Мощность линии (граммы/час)
                 if (power == 0)
                     return double.PositiveInfinity;
-                double timeForWorkload = region.GetSummWorkload - (id == null ? 0 : region.IsRouteExist((int)id!) ? size : 0);
-                timeForWorkload /= (power / 60.0); // Время, затрачиваемое на имеющиеся заказы
+                double timeForWorkload = (region.GetSummWorkload - (id == null ? 0 : region.IsRouteExist((int)id!) ? size : 0)) / (power / 60.0); // Время, затрачиваемое на имеющиеся заказы
                 double timeForItRegion = size / (power / 60.0); // Время, затрачиваемое на данный регион
                 double timeForTransit = (int)region.TransitTime!; // Время прохождения линии (не учитывает время обработки)
-                timeLeadOnRegions.Add(timeForWorkload + timeForItRegion + timeForTransit);
+                double timeForDowntime = 0; // Расчёт времени по простою
+                if (region.IsDowntime)
+                {
+                    DateTime DowntimeFinish = region.GetDowntimeFinish!.Value;
+                    if (downtimeOnRoute == null)
+                    {
+                        timeForDowntime = DowntimeFinish.Subtract(DateTime.Now).TotalMinutes;
+                        downtimeOnRoute = DowntimeFinish;
+                    }
+                    else if (downtimeOnRoute < DowntimeFinish)
+                    {
+                        timeForDowntime = DowntimeFinish.Subtract(downtimeOnRoute.Value).TotalMinutes;
+                        downtimeOnRoute = DowntimeFinish;
+                    }
+                }
+
+                // Всё, теперь осталось только суммировать всё
+                timeLeadOnRegions.Add(timeForWorkload + timeForItRegion + timeForTransit + timeForDowntime);
                 time += timeLeadOnRegions[^1];
             }
 
@@ -270,6 +287,26 @@
             }
 
             return route;
+        }
+
+        // Проверка, что следующий участок доступен (проверка нужна участку, чтоб он менял приоритеты)
+        public bool NextRegionIsAvailable(int IdItRegion)
+        {
+            if (id == null)
+                return false;
+            for (int i = 0; i < _route.Count; ++i)
+                if (_route[i] == IdItRegion)
+                {
+                    // Если это последний участок, то однозначно можно доделывать участку свою работу
+                    if (i == _route.Last())
+                        return true;
+                    // В ином случае надо удостовериться, что следующий участок - рабочий
+                    if (new Region(i + 1).IsDowntime)
+                        return false;
+                    else
+                        return true;
+                }
+            throw new Exception($"Участок №{IdItRegion} не найден в маршруте №{id}");
         }
         #endregion
     }

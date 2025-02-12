@@ -81,7 +81,10 @@
                         r[5].ToString(), // transitTime
                         r[6].ToString(), // workload
                         r[7].ToString()!, // childrens
-                        r[8].ToString() // SizeToCompleteFirstRoute
+                        r[8].ToString(), // SizeToCompleteFirstRoute
+                        r[9].ToString(), // downtimeStart
+                        r[10].ToString(), // downtimeDuration
+                        r[11].ToString() // downtimeReason
                         );
                     ListRegions.Add(newRegion);
                 }

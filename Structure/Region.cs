@@ -12,9 +12,12 @@ namespace Smart
         private List<int> workload = []; // Нагрузка (последовательный список маршрутов из их id)
         private string childrens = ""; // Список подчиннных участков, куда направляется изготовленная продукция, в порядке приоритета
         private double? SizeToCompleteFirstRoute; // Сколько необходимо произвести товара для завершения первого заказа
+        public DateTime? downtimeStart { get; set; } // Начало простоя
+        public int? downtimeDuration { get; set; } // Продолжительность простоя
+        public string? downtimeReason { get; set; } // Причина простоя
         #endregion
 
-        #region Переменные для работы участка
+        #region Переменные для имитации работы участка
         private DispatcherTimer timer = new();
         private double powerInMinute = 0;
         Route? NowRoute;
@@ -73,6 +76,24 @@ namespace Smart
             }
         }
         public double? GetSizeToCompleteFirstRoute => SizeToCompleteFirstRoute;
+        public DateTime? GetDowntimeFinish
+        {
+            get
+            {
+                if (downtimeStart == null)
+                    return null;
+                return ((DateTime)downtimeStart).AddMinutes((double)downtimeDuration!);
+            }
+        }
+        public bool IsDowntime
+        {
+            get
+            {
+                if (downtimeStart == null)
+                    return false;
+                return ((DateTime)downtimeStart).AddMinutes((double)downtimeDuration!) < DateTime.Now ? true : false;
+            }
+        }
         #endregion
 
         #region Конструкторы
@@ -81,7 +102,8 @@ namespace Smart
             this.id = id;
             Refresh();
         }
-        public Region(int? idParent, string name, Technology type, int? power, int? transitTime, string childrens) : base(name) // Когда ещё только создаётся Участок
+        public Region(int? idParent, string name, Technology type, int? power, int? transitTime, string childrens,
+            DateTime? downtimeStart = null, int? downtimeDuration = null, string? downtimeReason = null) : base(name) // Когда ещё только создаётся Участок
         {
             this.name = name;
             this.idParent = idParent;
@@ -89,8 +111,13 @@ namespace Smart
             this.Power = power;
             this.transitTime = transitTime;
             this.childrens = childrens;
+            this.downtimeStart = downtimeStart;
+            this.downtimeDuration = downtimeDuration;
+            this.downtimeReason = downtimeReason;
+            UpdateDowntime();
         }
-        public Region(int id, int? idParent, string name, Technology type, int? power, int? transitTime, List<int>? workload, string childrens, double? SizeToCompleteFirstRoute) : base(id, name) // Когда всё известно и надо загрузить
+        public Region(int id, int? idParent, string name, Technology type, int? power, int? transitTime, List<int>? workload, string childrens,
+            double? SizeToCompleteFirstRoute, DateTime? downtimeStart, int? downtimeDuration, string? downtimeReason) : base(id, name) // Когда всё известно и надо загрузить
         {
             this.idParent = idParent;
             this.type = type;
@@ -99,8 +126,13 @@ namespace Smart
             this.workload = workload ?? [];
             this.childrens = childrens;
             this.SizeToCompleteFirstRoute = SizeToCompleteFirstRoute;
+            this.downtimeStart = downtimeStart;
+            this.downtimeDuration = downtimeDuration;
+            this.downtimeReason = downtimeReason;
+            UpdateDowntime();
         }
-        public Region(string id, string idParent, string name, string? type, string? power, string? transitTime, string? workload, string childrens, string? SizeToCompleteFirstRoute) // Когда всё известно и надо загрузить
+        public Region(string id, string idParent, string name, string? type, string? power, string? transitTime, string? workload, string childrens, string? SizeToCompleteFirstRoute,
+            string? downtimeStart, string? downtimeDuration, string? downtimeReason) // Когда всё известно и надо загрузить
         {
             this.id = int.Parse(id);
             this.idParent = int.Parse(idParent);
@@ -114,6 +146,12 @@ namespace Smart
             this.childrens = childrens;
             if (double.TryParse(SizeToCompleteFirstRoute, out double _SizeToCompleteFirstRoute))
                 this.SizeToCompleteFirstRoute = _SizeToCompleteFirstRoute;
+            if (DateTime.TryParse(downtimeStart, out DateTime _downtimeStart))
+                this.downtimeStart = _downtimeStart;
+            if (int.TryParse(downtimeDuration, out int _downtimeDuration))
+                this.downtimeDuration = _downtimeDuration;
+            this.downtimeReason = downtimeReason;
+            UpdateDowntime();
         }
         #endregion
 
@@ -121,12 +159,15 @@ namespace Smart
         // Сохранить изменения в БД
         public override bool Save()
         {
+            // Проверка
+            UpdateDowntime();
+
             // Если объект ещё не создан, то его надо добавить
+            string[] arguments = [idParent.ToString()!, name, ((int)type).ToString(), power.ToString()!, transitTime.ToString()!, WorkloadToString(), childrens, SizeToCompleteFirstRoute.ToString()!,
+                downtimeStart.ToString()!, downtimeDuration.ToString()!, downtimeReason!];
             if (id == null)
             {
-                if (DB.Insert("Region",
-                    [idParent.ToString()!, name, ((int)type).ToString(), power.ToString()!, transitTime.ToString()!, workload.ToString()!, childrens, SizeToCompleteFirstRoute.ToString()!],
-                    out int? returnID))
+                if (DB.Insert("Region", arguments, out int? returnID))
                 {
                     id = returnID;
                     return true;
@@ -137,8 +178,8 @@ namespace Smart
 
             // Если объект уже создан, то его надо просто обновить
             return DB.Replace("Region", "id", id.ToString()!,
-                ["name", "type", "idParent", "power", "transitTime", "workload", "childrens", "SizeToCompleteFirstRoute"],
-                [name, ((int)type).ToString(), idParent.ToString()!, power.ToString()!, transitTime.ToString()!, WorkloadToString(), childrens, SizeToCompleteFirstRoute.ToString()!]);
+                ["idParent", "name", "type", "power", "transitTime", "workload", "childrens", "SizeToCompleteFirstRoute", "downtimeStart", "downtimeDuration", "downtimeReason"],
+                arguments);
         }
 
         // Удалить объект из БД
@@ -167,6 +208,12 @@ namespace Smart
             this.childrens = datas[7].ToString()!;
             if (double.TryParse(datas[8].ToString()!, out double SizeToCompleteFirstRoute))
                 this.SizeToCompleteFirstRoute = SizeToCompleteFirstRoute;
+            if (DateTime.TryParse(datas[9].ToString(), out DateTime _downtimeStart))
+                this.downtimeStart = _downtimeStart;
+            if (int.TryParse(datas[10].ToString(), out int _downtimeDuration))
+                this.downtimeDuration = _downtimeDuration;
+            this.downtimeReason = datas[11].ToString();
+            UpdateDowntime();
         }
 
         // Конвертацию нагрузки в строку и наоборот
@@ -222,6 +269,7 @@ namespace Smart
         {
             // Проверка на то, что регион можно запустить
             Refresh();
+            UpdateQueue();
             if (workload.Count > 0)
             {
                 if (NowRoute == null)
@@ -242,16 +290,15 @@ namespace Smart
         }
         private void UpdateWorkload(object? sender, EventArgs e)
         {
-            // Проверка: если нет нагрузки, то нечего работать участку
+            // Проверка: если нет нагрузки или сейчас простой, то нечего работать участку
             Refresh();
-            if (workload.Count == 0 || NowRoute == null)
+            if (workload.Count == 0 || NowRoute == null || this.IsDowntime)
             {
                 DeactivateRegion();
                 return;
             }
 
             // Обрабатываем изменения
-            //NowRoute = new Route(workload[0]);
             double copyPowerInMinute = powerInMinute;
             while (copyPowerInMinute > 0 && SizeToCompleteFirstRoute > 0)
             {
@@ -261,9 +308,10 @@ namespace Smart
                 {
                     workload.RemoveAt(0);
                     NowRoute.NextRegion();
-                    
+
                     if (workload.Count > 0)
                     {
+                        UpdateQueue();
                         NowRoute = new Route(workload[0]);
                         SizeToCompleteFirstRoute = NowRoute.Size;
                     }
@@ -291,7 +339,7 @@ namespace Smart
             timer.IsEnabled = false; // На всякий случай ещё и так
         }
 
-        // Проверка, есть ли в очереди данный маршрут
+        // Проверка, есть ли в очереди маршрут с указанным номером
         public bool IsRouteExist(int IdRoute)
         {
             if (workload.Count > 0)
@@ -299,6 +347,56 @@ namespace Smart
                     if (ItRoute == IdRoute)
                         return true;
             return false;
+        }
+
+        // Обновить состояние простоя
+        private void UpdateDowntime()
+        {
+            // Надо ли вообще обновлять
+            if (downtimeStart == null)
+                return;
+
+            // Удостоверяемся, что надо обновить состояние
+            if (DateTime.Now >= ((DateTime)downtimeStart).AddMinutes((int)downtimeDuration!))
+            {
+                DowntimeToNull();
+                _ = Save();
+            }
+        }
+        private void DowntimeToNull()
+        {
+            downtimeStart = null;
+            downtimeDuration = null;
+            downtimeReason = null;
+        }
+
+        // Обновить очередь маршрутов
+        private void UpdateQueue()
+        {
+            // Обязательные условия: существование участка и наличие очереди
+            if (id == null)
+                throw new Exception("Необходимо сохранить участок в БД");
+            if (workload.Count == 0)
+                return;
+
+            // Сначала проверим необходимость изменения приоритоета вообще
+            Route r = new(workload[0]);
+            if (r.NextRegionIsAvailable((int)id))
+                return;
+
+            // Проверяем весь оставшийся список.
+            // Цель: поставить на первое место маршрут, который способен выполнять работу
+            for (int i = 1; i < workload.Count; ++i)
+            {
+                r = new(workload[i]);
+                if (r.NextRegionIsAvailable((int)id))
+                {
+                    int Copy = workload[i];
+                    workload.RemoveAt(i);
+                    workload.Insert(0, Copy);
+                    return;
+                }
+            }
         }
         #endregion
     }

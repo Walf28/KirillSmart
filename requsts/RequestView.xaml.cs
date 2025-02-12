@@ -46,11 +46,12 @@ namespace Smart
             }
         }
 
-        // Выбор узла в древе
+        // Выбор узла в древе (заявки)
         private void TreeViewItem_Selected(object sender, RoutedEventArgs e)
         {
             GridMain.Visibility = Visibility.Visible;
             SelectRequest = ((sender as TreeViewItem)!.Tag as Request)!;
+            SelectRequest.Refresh();
 
             // Вывод данных
             tbNumber.Text = SelectRequest.GetId.ToString();

@@ -1,6 +1,4 @@
-﻿using System.ComponentModel;
-using System.Reflection;
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 
 namespace Smart
@@ -31,15 +29,26 @@ namespace Smart
             tbName.Text = region.Name.Trim();
             cbType.SelectedIndex = (int)(region.Type);
             tbPower.Text = region.Power.ToString();
-            tbDownTime.Text = region.TransitTime.ToString();
+            tbTransitTime.Text = region.TransitTime.ToString();
             tbWorkload.Text = region.GetSummWorkload.ToString();
-            if (region != null && region.Childrens != null && region.Childrens != "")
-                foreach(string id in region.Childrens!.Split(';'))
+            if (region.Childrens != null && region.Childrens != "")
+                foreach (string id in region.Childrens!.Split(';'))
                 {
                     var res = DB.SelectWhere("Region", "id", id);
-                    ListOfChildrens.Items.Add(new ListBoxItem() { Content = res![0][2].ToString(),
-                    Tag = res![0][0].ToString() });
+                    ListOfChildrens.Items.Add(new ListBoxItem()
+                    {
+                        Content = res![0][2].ToString(),
+                        Tag = res![0][0].ToString()
+                    });
                 }
+            if (region!.downtimeStart != null)
+            {
+                tbDowntimeStart.Text = region!.downtimeStart.ToString();
+                tbDowntimeDuration.Text = region!.downtimeDuration.ToString();
+                tbDowntimeReason.Text = region!.downtimeReason!.ToString();
+            }
+            else
+                tbDowntimeStart.Text = "Сейчас";
         }
         #endregion
 
@@ -72,8 +81,8 @@ namespace Smart
 
             // Получаем необходимые переменные, описывающие новые данные
             Technology technology = (Technology)cbType.SelectedIndex;
-            int.TryParse(tbPower.Text, out int Power);
-            int.TryParse(tbDownTime.Text, out int TransitTime);
+            _ = int.TryParse(tbPower.Text, out int Power);
+            _ = int.TryParse(tbTransitTime.Text, out int TransitTime);
             string idChildrens = "";
             if (ListOfChildrens.Items.Count > 0)
             {
@@ -81,10 +90,12 @@ namespace Smart
                     idChildrens += $"{lbi.Tag};";
                 idChildrens = idChildrens.Remove(idChildrens.Length - 1);
             }
+            bool DowntimeExist = int.TryParse(tbDowntimeDuration.Text, out int _DownTimeDuration);
 
             // Решаем, обновлять или создавать новый регион
             if (region == null)
-                region = new Region(z.getId, tbName.Text, technology, Power, TransitTime, idChildrens);
+                region = new Region(z.getId, tbName.Text, technology, Power, TransitTime, idChildrens,
+                    DowntimeExist ? DateTime.Now : null, DowntimeExist ? _DownTimeDuration : null, DowntimeExist ? tbDowntimeReason.Text : null);
             else
             {
                 region.Name = tbName.Text;
@@ -92,6 +103,12 @@ namespace Smart
                 region.Power = Power;
                 region.TransitTime = TransitTime;
                 region.Childrens = idChildrens;
+                if (DowntimeExist)
+                {
+                    region.downtimeStart = DateTime.Now;
+                    region.downtimeDuration = _DownTimeDuration;
+                    region.downtimeReason = tbDowntimeReason.Text;
+                }
             }
             return region;
         }
