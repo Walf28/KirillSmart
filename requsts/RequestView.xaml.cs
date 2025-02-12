@@ -31,7 +31,8 @@ namespace Smart
                     r[8].ToString(), // GetDateOfCompletionOnRegion
                     r[9].ToString() // IsFinish
                     );
-                TreeViewItem tvi = new() { Header = $"{request.GetId}_{request.GetProduct}", Tag = request };
+                TreeViewItem tvi = new() { Header = $"{request.GetId}_{request.GetProduct}", Tag = request,
+                Background = request.isFinish ? Brushes.Lime : Brushes.Red };
                 tvi.Selected += TreeViewItem_Selected;
                 tvTree.Items.Add(tvi);
             }

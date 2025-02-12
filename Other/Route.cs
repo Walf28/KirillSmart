@@ -168,8 +168,10 @@
         {
             string strTimeLeadOnRegions = "";
             if (timeLeadOnRegions.Count > 0)
+            {
                 foreach (var TLoR in timeLeadOnRegions)
                     strTimeLeadOnRegions += $"{TLoR};";
+            }
             return strTimeLeadOnRegions == "" ? strTimeLeadOnRegions : strTimeLeadOnRegions.Remove(strTimeLeadOnRegions.Length - 1);
         }
 
@@ -298,13 +300,10 @@
                 if (_route[i] == IdItRegion)
                 {
                     // Если это последний участок, то однозначно можно доделывать участку свою работу
-                    if (i == _route.Last())
+                    if (i == _route.Count-1)
                         return true;
                     // В ином случае надо удостовериться, что следующий участок - рабочий
-                    if (new Region(i + 1).IsDowntime)
-                        return false;
-                    else
-                        return true;
+                    return !(new Region(_route[i + 1]).IsDowntime);
                 }
             throw new Exception($"Участок №{IdItRegion} не найден в маршруте №{id}");
         }

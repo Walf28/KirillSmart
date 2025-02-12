@@ -155,8 +155,6 @@
             if (DateOfCompletionOnRegion != null && NumberRegion < DateOfCompletionOnRegion.Count)
             {
                 DateOfCompletionOnRegion[NumberRegion] = date;
-                if (NumberRegion == DateOfCompletionOnRegion.Count - 1)
-                    _DateOfCompletion = date;
                 if (Save)
                     if (!this.Save())
                         throw new Exception("Не удалось обновить данные в БД");

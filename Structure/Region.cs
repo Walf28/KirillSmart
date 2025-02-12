@@ -91,7 +91,7 @@ namespace Smart
             {
                 if (downtimeStart == null)
                     return false;
-                return ((DateTime)downtimeStart).AddMinutes((double)downtimeDuration!) < DateTime.Now ? true : false;
+                return ((DateTime)downtimeStart).AddMinutes((double)downtimeDuration!) < DateTime.Now;
             }
         }
         #endregion
@@ -164,7 +164,7 @@ namespace Smart
 
             // Если объект ещё не создан, то его надо добавить
             string[] arguments = [idParent.ToString()!, name, ((int)type).ToString(), power.ToString()!, transitTime.ToString()!, WorkloadToString(), childrens, SizeToCompleteFirstRoute.ToString()!,
-                downtimeStart.ToString()!, downtimeDuration.ToString()!, downtimeReason!];
+                downtimeStart == null ? "" : downtimeStart.ToString()!, downtimeDuration.ToString()!, downtimeReason!];
             if (id == null)
             {
                 if (DB.Insert("Region", arguments, out int? returnID))
@@ -272,8 +272,7 @@ namespace Smart
             UpdateQueue();
             if (workload.Count > 0)
             {
-                if (NowRoute == null)
-                    NowRoute = new(workload[0]);
+                NowRoute = new(workload[0]);
                 if (SizeToCompleteFirstRoute == null || SizeToCompleteFirstRoute == 0)
                     SizeToCompleteFirstRoute = NowRoute.Size;
             }
@@ -302,8 +301,9 @@ namespace Smart
             double copyPowerInMinute = powerInMinute;
             while (copyPowerInMinute > 0 && SizeToCompleteFirstRoute > 0)
             {
+                double CopySTCFR = SizeToCompleteFirstRoute.Value;
                 SizeToCompleteFirstRoute -= copyPowerInMinute;
-                copyPowerInMinute -= NowRoute.Size;
+                copyPowerInMinute -= CopySTCFR;
                 if (SizeToCompleteFirstRoute <= 0)
                 {
                     workload.RemoveAt(0);
@@ -321,17 +321,15 @@ namespace Smart
             }
 
             // Очередная проверка
-            if (workload.Count == 0)
+            if (workload.Count == 0 || !NowRoute.RegionIsReady((int)id!) || !NowRoute.NextRegionIsAvailable(id.Value))
             {
                 NowRoute = null;
                 SizeToCompleteFirstRoute = null;
                 DeactivateRegion();
             }
-            else if (!NowRoute.RegionIsReady((int)id!))
-                DeactivateRegion();
 
             // Сохраняем изменения
-            Save();
+            _ = Save();
         }
         public void DeactivateRegion()
         {
