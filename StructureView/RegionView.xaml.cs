@@ -41,11 +41,11 @@ namespace Smart
                         Tag = res![0][0].ToString()
                     });
                 }
-            if (region!.downtimeStart != null)
+            if (region!.DowntimeStart != null)
             {
-                tbDowntimeStart.Text = region!.downtimeStart.ToString();
-                tbDowntimeDuration.Text = region!.downtimeDuration.ToString();
-                tbDowntimeReason.Text = region!.downtimeReason!.ToString();
+                tbDowntimeStart.Text = region!.DowntimeStart.ToString();
+                tbDowntimeDuration.Text = region!.DowntimeDuration.ToString();
+                tbDowntimeReason.Text = region!.DowntimeReason!.ToString();
             }
             else
                 tbDowntimeStart.Text = "Сейчас";
@@ -105,9 +105,9 @@ namespace Smart
                 region.Childrens = idChildrens;
                 if (DowntimeExist)
                 {
-                    region.downtimeStart = DateTime.Now;
-                    region.downtimeDuration = _DownTimeDuration;
-                    region.downtimeReason = tbDowntimeReason.Text;
+                    region.DowntimeStart = DateTime.Now;
+                    region.DowntimeDuration = _DownTimeDuration;
+                    region.DowntimeReason = tbDowntimeReason.Text;
                 }
             }
             return region;

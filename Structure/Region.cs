@@ -12,9 +12,9 @@ namespace Smart
         private List<int> workload = []; // Нагрузка (последовательный список маршрутов из их id)
         private string childrens = ""; // Список подчиннных участков, куда направляется изготовленная продукция, в порядке приоритета
         private double? SizeToCompleteFirstRoute; // Сколько необходимо произвести товара для завершения первого заказа
-        public DateTime? downtimeStart { get; set; } // Начало простоя
-        public int? downtimeDuration { get; set; } // Продолжительность простоя
-        public string? downtimeReason { get; set; } // Причина простоя
+        public DateTime? DowntimeStart { get; set; } // Начало простоя
+        public int? DowntimeDuration { get; set; } // Продолжительность простоя
+        public string? DowntimeReason { get; set; } // Причина простоя
         #endregion
 
         #region Переменные для имитации работы участка
@@ -80,18 +80,32 @@ namespace Smart
         {
             get
             {
-                if (downtimeStart == null)
+                if (DowntimeStart == null)
                     return null;
-                return ((DateTime)downtimeStart).AddMinutes((double)downtimeDuration!);
+                return ((DateTime)DowntimeStart).AddMinutes((double)DowntimeDuration!);
             }
         }
         public bool IsDowntime
         {
             get
             {
-                if (downtimeStart == null)
+                if (DowntimeStart == null)
                     return false;
-                return ((DateTime)downtimeStart).AddMinutes((double)downtimeDuration!) < DateTime.Now;
+                DateTime dtFinish = ((DateTime)DowntimeStart).AddMinutes((double)DowntimeDuration!);
+                return dtFinish > DateTime.Now;
+            }
+        }
+        public double DowntimeRemaining // Остаток времени простоя в минутах
+        {
+            get
+            {
+                if (DowntimeStart == null)
+                    return 0;
+
+                DateTime downtimeFinish = GetDowntimeFinish!.Value;
+                if (downtimeFinish > DateTime.Now)
+                    return downtimeFinish.Subtract(DateTime.Now).TotalMinutes;
+                return 0;
             }
         }
         #endregion
@@ -111,9 +125,9 @@ namespace Smart
             this.Power = power;
             this.transitTime = transitTime;
             this.childrens = childrens;
-            this.downtimeStart = downtimeStart;
-            this.downtimeDuration = downtimeDuration;
-            this.downtimeReason = downtimeReason;
+            this.DowntimeStart = downtimeStart;
+            this.DowntimeDuration = downtimeDuration;
+            this.DowntimeReason = downtimeReason;
             UpdateDowntime();
         }
         public Region(int id, int? idParent, string name, Technology type, int? power, int? transitTime, List<int>? workload, string childrens,
@@ -126,9 +140,9 @@ namespace Smart
             this.workload = workload ?? [];
             this.childrens = childrens;
             this.SizeToCompleteFirstRoute = SizeToCompleteFirstRoute;
-            this.downtimeStart = downtimeStart;
-            this.downtimeDuration = downtimeDuration;
-            this.downtimeReason = downtimeReason;
+            this.DowntimeStart = downtimeStart;
+            this.DowntimeDuration = downtimeDuration;
+            this.DowntimeReason = downtimeReason;
             UpdateDowntime();
         }
         public Region(string id, string idParent, string name, string? type, string? power, string? transitTime, string? workload, string childrens, string? SizeToCompleteFirstRoute,
@@ -147,10 +161,10 @@ namespace Smart
             if (double.TryParse(SizeToCompleteFirstRoute, out double _SizeToCompleteFirstRoute))
                 this.SizeToCompleteFirstRoute = _SizeToCompleteFirstRoute;
             if (DateTime.TryParse(downtimeStart, out DateTime _downtimeStart))
-                this.downtimeStart = _downtimeStart;
+                this.DowntimeStart = _downtimeStart;
             if (int.TryParse(downtimeDuration, out int _downtimeDuration))
-                this.downtimeDuration = _downtimeDuration;
-            this.downtimeReason = downtimeReason;
+                this.DowntimeDuration = _downtimeDuration;
+            this.DowntimeReason = downtimeReason;
             UpdateDowntime();
         }
         #endregion
@@ -164,7 +178,7 @@ namespace Smart
 
             // Если объект ещё не создан, то его надо добавить
             string[] arguments = [idParent.ToString()!, name, ((int)type).ToString(), power.ToString()!, transitTime.ToString()!, WorkloadToString(), childrens, SizeToCompleteFirstRoute.ToString()!,
-                downtimeStart == null ? "" : downtimeStart.ToString()!, downtimeDuration.ToString()!, downtimeReason!];
+                DowntimeStart == null ? "" : DowntimeStart.ToString()!, DowntimeDuration.ToString()!, DowntimeReason!];
             if (id == null)
             {
                 if (DB.Insert("Region", arguments, out int? returnID))
@@ -209,10 +223,10 @@ namespace Smart
             if (double.TryParse(datas[8].ToString()!, out double SizeToCompleteFirstRoute))
                 this.SizeToCompleteFirstRoute = SizeToCompleteFirstRoute;
             if (DateTime.TryParse(datas[9].ToString(), out DateTime _downtimeStart))
-                this.downtimeStart = _downtimeStart;
+                this.DowntimeStart = _downtimeStart;
             if (int.TryParse(datas[10].ToString(), out int _downtimeDuration))
-                this.downtimeDuration = _downtimeDuration;
-            this.downtimeReason = datas[11].ToString();
+                this.DowntimeDuration = _downtimeDuration;
+            this.DowntimeReason = datas[11].ToString();
             UpdateDowntime();
         }
 
@@ -279,8 +293,9 @@ namespace Smart
             else
                 return;
 
-            // Проверка на то, что регион ещё не запущен
-            if (!timer.IsEnabled && SizeToCompleteFirstRoute > 0 && NowRoute.RegionIsReady((int)id!))
+            // Проверка на то, что регион ещё не запущен, а запустить его возможно
+            // Таймер не запущен, необходимо произвести больше 0 грамм товара, простоя нет на данный момент, маршрут готов продолжать работу по этому участку, следующий регион маршрута доступен
+            if (!timer.IsEnabled && SizeToCompleteFirstRoute > 0 && !IsDowntime && NowRoute.RegionIsReady((int)id!) && NowRoute.NextRegionIsAvailable(id.Value))
             {
                 timer.Tick += UpdateWorkload;
                 timer.Interval = TimeSpan.FromSeconds(60);
@@ -291,8 +306,11 @@ namespace Smart
         {
             // Проверка: если нет нагрузки или сейчас простой, то нечего работать участку
             Refresh();
-            if (workload.Count == 0 || NowRoute == null || this.IsDowntime)
+            bool IsDowntimeLocal = IsDowntime;
+            if (workload.Count == 0 || NowRoute == null || IsDowntimeLocal)
             {
+                if (IsDowntimeLocal)
+                    StreamsByRegions.RunAfter(id!.Value, DowntimeRemaining);
                 DeactivateRegion();
                 return;
             }
@@ -351,11 +369,11 @@ namespace Smart
         private void UpdateDowntime()
         {
             // Надо ли вообще обновлять
-            if (downtimeStart == null)
+            if (DowntimeStart == null)
                 return;
 
             // Удостоверяемся, что надо обновить состояние
-            if (DateTime.Now >= ((DateTime)downtimeStart).AddMinutes((int)downtimeDuration!))
+            if (DateTime.Now >= ((DateTime)DowntimeStart).AddMinutes((int)DowntimeDuration!))
             {
                 DowntimeToNull();
                 _ = Save();
@@ -363,9 +381,9 @@ namespace Smart
         }
         private void DowntimeToNull()
         {
-            downtimeStart = null;
-            downtimeDuration = null;
-            downtimeReason = null;
+            DowntimeStart = null;
+            DowntimeDuration = null;
+            DowntimeReason = null;
         }
 
         // Обновить очередь маршрутов
